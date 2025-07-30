@@ -2,32 +2,26 @@
 
 ![WebAssembly Linux Interface](assets/main-logo.png?raw=true)
 
+***A (Nearly-Complete) Linux API for WebAssembly!***
+
 This is a result of work published at *EuroSys 2025* on [**Empowering WebAssembly with Thin Kernel Interfaces**](https://dl.acm.org/doi/abs/10.1145/3689031.3717470) (arxiv version available [here](https://arxiv.org/abs/2312.03858))
 
 This repo contains all the compiler and engine prototypes for an implementation of the *WebAssembly Linux Interface*. A list of supported syscalls can be found [here](docs/support.md)
 
-## Overview
-WALI is a complete(ish) abstraction over Linux for WebAssembly that aims to push lightweight virtualization
-down to prevalent, low-level Linux applications. 
-WALI adopts a layering approach to API design, allowing WASI (and other arbitrary Wasm APIs) to be virtualized over it, 
-establishing infrastructure for Wasm both in research and industry.
-
-Building and running Wasm binaries is now **trivial** with WALI, while improving ecosystem security
-
 ## Component Setup
 
 Before proceeding, make sure all dependencies are installed with `sudo ./apt-install-deps.sh`. 
-There are four major toolchain components, that may be incrementally built based on requirements:
+There are four major toolchain components, that may be incrementally built:
 
-***I just want to run WALI apps!***:
+***I just want to run WALI Wasm executables!***:
 1. [WALI Engine](#1-wali-engine)
 
-***I want to compile/build WALI apps!***:
+***I want to compile/build WALI executables!***:
 
 2. [WALI LLVM Toolchain](#2-wali-llvm-toolchain)
 3. [WALI Sysroot](#3-wali-sysroot)
 
-***I want to AoT compile WALI apps to go fast!***
+***I want to AoT compile the Wasm executables to go fast!***
 
 4. [AoT Compiler](#4-aot-compiler)
 
@@ -37,16 +31,16 @@ There are four major toolchain components, that may be incrementally built based
 We include a baseline implementation in WAMR. To build:
 ```shell
 git submodule update --init wasm-micro-runtime
+# Generates `iwasm` symlink in root directory
 make iwasm
 ```
-An `iwasm` symlink executable should be generated in the root directory that can execute WALI binaries (e.g. `./iwasm -v=0 --stack-size=524288 <path-to-wasm-file>`).
-See [Sample Applications](#sample-applications) for test binaries.
 
+See [Sample Applications](#sample-applications) for test binaries.
 
 #### WASM as a Miscellaneous Binary Format!
 
-WALI Wasm/AoT binaries can be executed like ELF files with `iwasm` (e.g. `./bash.wasm --norc`)!
-This will simplify all WALI toolchain builds and is **required** to compile some [applications](applications) in our repo.
+WALI Wasm/AoT binaries can be executed like ELF files with `iwasm` (e.g. `./bash.wasm --norc`).
+This simplifies all builds and is **necessary** to compile some [applications](applications) in our repo.
 To do this, run:
 
 ```shell
@@ -72,7 +66,6 @@ make wali-compiler
 
 ### 3. WALI Sysroot
 
-To build libc:
 ```shell
 git submodule update --init wali-musl
 make libc
@@ -84,30 +77,43 @@ to more architectures.
 
 ### 4. AoT Compiler
 
-Generates faster ahead-of time compiled executables. For our WAMR implementation, build as:
+Generates faster ahead-of time compiled executables. For our WAMR implementation, build with:
 ```
 make wamrc
 ```
 
-Refer to [WAMR compiler](https://github.com/SilverLineFramework/wasm-micro-runtime/tree/wali/wamr-compiler)
-for any extra information on the build.
-Once completed, a symlink to `wamrc` is generated in the root directory:
+Refer to [WAMR compiler docs](https://github.com/SilverLineFramework/wasm-micro-runtime/tree/wali/wamr-compiler) for more info.
+
+The `wamrc` symlink can be used as follows:
+
 ```shell
 wamrc --enable-multi-thread -o <destination-aot-file> <source-wasm-file>  # We require --enable-multi-thread flag for threads
 ```
 
 
-## Adapting Build Systems to WALI
+## Building Applications with WALI
+
+### Building a "Hello World"
+
+To build a simple C file, you can run the following on a Bash shell:
+
+```shell
+# This file provides appropriate compilation flags as environment variables (e.g. WALI_CC, WALI_LD, WALI_CFLAGS, WALI_LDFLAGS)
+source wali_config.sh
+$WALI_CC $WALI_CFLAGS $WALI_LDFLAGS <c-file> -o <output-file>
+```
+
+### Build System Plugins
 
 We provide three configuration files with toolchain requirements, drastically easing plug-in into major builds
-1. Bash: Source the [wali\_config.sh](wali_config.sh) (see [tests/compile-wali.sh](tests/compile-wali.sh))
-2. Make: Include [wali\_config.mk](wali_config.mk) (see [applications/Makefile](applications/Makefile))
-3. CMake: The [wali\_config\_toolchain.cmake](wali_config_toolchain.cmake) file can be used directly in `CMAKE\_TOOLCHAIN\_FILE`
+1. **Shell**: Source the [wali\_config.sh](wali_config.sh) (see [tests/compile-wali.sh](tests/compile-wali.sh))
+2. **Make**: Include [wali\_config.mk](wali_config.mk) (see [applications/Makefile](applications/Makefile))
+3. **CMake**: The [wali\_config\_toolchain.cmake](wali_config_toolchain.cmake) file can be used directly in `CMAKE\_TOOLCHAIN\_FILE`
 
 
 ## Sample Applications
 
-* **Tests** can be built with `make tests`. WALI executables are located in `tests/wasm` -- corresponding native ELF files in `tests/elf` can be used to compare against the WASM output
+* **Tests**: Build with `make tests`. Executables are located in `tests/wasm`.
 * **Apps**: The [sample-apps](sample-apps) directory has few several popular prebuilt binaries to run
 
 
@@ -138,9 +144,20 @@ be patched into `Cargo.toml` for the out-of-tree build.
 
 
 
+## Project Motivation
+The WALI for WebAssembly aims to push lightweight virtualization
+down to prevalent, low-level Linux applications. 
+WALI adopts a layering approach to API design, allowing WASI (and other arbitrary Wasm APIs) to be virtualized over it, 
+establishing infrastructure for Wasm both in research and industry.
+
+Building and running Wasm binaries is now **trivial** with WALI, while improving ecosystem security by layering Wasm APIs
+
+
 ## Resources
 * Wasm possesses different runtime properties than some lower level languages like C (type-safety, sandboxing, etc.). The operation of WALI on these applications may differ as listed [here](docs/constraints.md)
 * [Zenodo](https://zenodo.org/records/14829424) Ubuntu 22.04 VM artifact for experimenting with WALI
 * [Syscall Information Table](https://docs.google.com/spreadsheets/d/1__2NqMqGLHdjFFYonkF49IkGgfv62TJCpZuXqhXwnlc/edit?usp=sharing)
 * Related Work: [Verifying System Interfaces Paper](https://cseweb.ucsd.edu/~dstefan/pubs/johnson:2023:wave.pdf)
+
+
 
